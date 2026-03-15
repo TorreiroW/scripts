@@ -5,6 +5,7 @@ import glob
 import csv
 import shutil
 import tempfile
+import requests
 from bs4 import BeautifulSoup
 from ics import Calendar, Event
 from datetime import datetime
@@ -28,11 +29,18 @@ print(f"Tijdelijke directory aangemaakt: {tmp_dir}")
 
 try:
     # -------------------------
+    # Stap 0: Download HTML van website
+    # -------------------------
+    url = "https://dindoa.nl/ws/competitie-programma/"
+    print(f"Downloading HTML from {url}...")
+    response = requests.get(url)
+    response.raise_for_status()
+    html = response.text
+    print("HTML successfully downloaded")
+
+    # -------------------------
     # Stap 1: Haal de inhoud van de div en split per <h3>
     # -------------------------
-    with open("index.html", "r", encoding="utf-8") as f:
-        html = f.read()
-
     soup = BeautifulSoup(html, "html.parser")
     div = soup.find("div", class_="page-content table-responsive")
     if not div:
@@ -123,7 +131,7 @@ try:
             for row in reader:
                 if not row:
                     continue
-                tijd, team, tegenstander, locatie, *rest = row
+                tijd, team, tegenstander, _, locatie, *rest = row
                 if team_naam not in team.lower() and team_naam not in tegenstander.lower():
                     continue
                 try:
