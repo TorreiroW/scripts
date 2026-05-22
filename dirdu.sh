@@ -3,12 +3,13 @@ checkDir=${1:-.}
 dirs=($(find "${checkDir}" -maxdepth 1 -mindepth 1 -type d))
 
 du_with_spinner() {
-    local dir=$1
+    local dir=$1 tmpfile
+    tmpfile=$(mktemp)
     if command -v gum &>/dev/null; then
-        gum spin --spinner dot --title "Checking ${dir}..." -- du -xsm "$dir" 2>/dev/null
+        gum spin --spinner dot --title "Checking ${dir}..." -- \
+            bash -c 'du -xsm "$1" >"$2" 2>/dev/null' _ "$dir" "$tmpfile"
     else
-        local tmpfile frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' i=0
-        tmpfile=$(mktemp)
+        local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' i=0
         du -xsm "$dir" >"$tmpfile" 2>/dev/null &
         local pid=$!
         while kill -0 "$pid" 2>/dev/null; do
@@ -17,16 +18,13 @@ du_with_spinner() {
             ((i++))
         done
         printf "\r%-*s\r" $((${#dir} + 15)) '' >&2
-        cat "$tmpfile"
-        rm -f "$tmpfile"
     fi
+    cat "$tmpfile"
+    rm -f "$tmpfile"
 }
 
-results=()
 for dir in "${dirs[@]}"; do
     if ! mountpoint -q "$dir" 2>/dev/null; then
-        results+=("$(du_with_spinner "$dir")")
+        du_with_spinner "$dir"
     fi
-done
-
-printf '%s\n' "${results[@]}" | sort -n
+done | sort -n
