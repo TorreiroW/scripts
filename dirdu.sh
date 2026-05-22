@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-checkDir=${1:-.}
+checkDir=.
+excludes=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -e|--exclude) excludes+=("$2"); shift 2 ;;
+        *) checkDir=$1; shift ;;
+    esac
+done
+
 dirs=($(find "${checkDir}" -maxdepth 1 -mindepth 1 -type d))
 
 du_with_spinner() {
@@ -23,8 +32,17 @@ du_with_spinner() {
     rm -f "$tmpfile"
 }
 
+is_excluded() {
+    local dir base
+    base=$(basename "$1")
+    for dir in "${excludes[@]}"; do
+        [[ "$base" == "$dir" ]] && return 0
+    done
+    return 1
+}
+
 for dir in "${dirs[@]}"; do
-    if ! mountpoint -q "$dir" 2>/dev/null; then
+    if ! mountpoint -q "$dir" 2>/dev/null && ! is_excluded "$dir"; then
         du_with_spinner "$dir"
     fi
 done | sort -n
